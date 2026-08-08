@@ -10,11 +10,11 @@ class Scaglione:
 
     def __post_init__(self):
         if self.soglia_min < Decimal(0):
-            raise ValueError("Soglia min cannot be negative")
+            raise ValueError("soglia_min non può essere negativo")
         if self.soglia_max is not None and self.soglia_max <= self.soglia_min:
-            raise ValueError("Soglia max must be greater than soglia min")
+            raise ValueError("soglia_max deve essere maggiore di soglia_min")
         if not (Decimal(0) <= self.aliquota <= Decimal(1)):
-            raise ValueError("Aliquota must be between 0 and 1")
+            raise ValueError("aliquota deve essere compreso tra 0 e 1")
 
 @dataclass(frozen=True)
 class Imposta:
@@ -25,32 +25,41 @@ class Imposta:
     def __post_init__(self):
         if not self.scaglioni:
             raise ValueError("Almeno uno scaglione richiesto")
-        scaglioni_ordinati = sorted(self.scaglioni, key=lambda s: s.soglia_min)
-        if list(scaglioni_ordinati) != list(self.scaglioni):
-            raise ValueError("Scaglioni devono essere ordinati per soglia_min")
-        for i, s in enumerate(self.scaglioni[:-1]):
-            if s.soglia_max != self.scaglioni[i + 1].soglia_min:
-                raise ValueError("Scaglioni devono essere contigui")
-        if self.scaglioni[-1].soglia_max is not None:
-            raise ValueError("Solo l'ultimo scaglione può essere aperto (soglia_max=None)")
 
-    # Ci possiamo servire di un unico metodo per calcolare il valore di una generica imposta su un generico importo.
-    # TODO: Edge cases? Quando potrebbe non valere questa generalizzazione?
+        # Il chiamante può passarli in qualsiasi ordine: normalizziamo qui,
+        # una volta sola, così l'invariante interna è garantita da questo
+        # punto in poi e calculate_tax non deve più preoccuparsene.
+        scaglioni_ordinati = tuple(sorted(self.scaglioni, key=lambda s: s.soglia_min))
+        object.__setattr__(self, "scaglioni", scaglioni_ordinati)
+
+        soglie_min = [s.soglia_min for s in scaglioni_ordinati]
+        if len(set(soglie_min)) != len(soglie_min):
+            raise ValueError("Due scaglioni non possono avere la stessa soglia_min")
+
+        aperti = [s for s in scaglioni_ordinati if s.soglia_max is None]
+        if len(aperti) > 1:
+            raise ValueError("Non può esserci più di uno scaglione illimitato (soglia_max=None)")
+        if aperti and aperti[0] is not scaglioni_ordinati[-1]: # TODO: assicurarsi di come funziona il confronto aperti[0] is not scaglioni_ordinati[-1]
+            raise ValueError("Lo scaglione illimitato deve essere quello con soglia_min più alta")
+
+        for corrente, successivo in zip(scaglioni_ordinati, scaglioni_ordinati[1:]):
+            if corrente.soglia_max != successivo.soglia_min:
+                raise ValueError(
+                    f"Scaglioni non contigui: {corrente.soglia_max} != {successivo.soglia_min}"
+                )
+
     def calculate_tax(self, imponibile: Decimal) -> Decimal:
         """
-        Calcola l'imposta dovuta in base all'imponibile e agli scaglioni definiti.
+        Somma il contributo di ogni scaglione sulla porzione di imponibile
+        che vi rientra. Ogni scaglione clippa la propria fetta a zero se
+        l'imponibile non la raggiunge — indipendente dall'ordine di iterazione.
         """
         if imponibile < Decimal(0):
-            raise ValueError("Imponibile cannot be negative") # TODO: Magari ampliare la logica e gestire anche questo caso
+            raise ValueError("Imponibile cannot be negative")
 
         tax = Decimal(0)
         for scaglione in self.scaglioni:
-            if scaglione.soglia_max is None or imponibile <= scaglione.soglia_max:
-                taxable_income = max(Decimal(0), min(imponibile, scaglione.soglia_max or imponibile) - scaglione.soglia_min)
-                tax += taxable_income * scaglione.aliquota
-                break
-            else:
-                taxable_income = scaglione.soglia_max - scaglione.soglia_min
-                tax += taxable_income * scaglione.aliquota
-
+            tetto = scaglione.soglia_max if scaglione.soglia_max is not None else imponibile
+            fetta_tassabile = max(Decimal(0), min(imponibile, tetto) - scaglione.soglia_min)
+            tax += fetta_tassabile * scaglione.aliquota
         return tax
