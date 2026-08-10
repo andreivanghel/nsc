@@ -40,7 +40,7 @@ class Imposta:
         aperti = [s for s in scaglioni_ordinati if s.soglia_max is None]
         if len(aperti) > 1:
             raise ValueError("Non può esserci più di uno scaglione illimitato (soglia_max=None)")
-        if aperti and aperti[0] is not scaglioni_ordinati[-1]: # TODO: assicurarsi di come funziona il confronto aperti[0] is not scaglioni_ordinati[-1]
+        if aperti and aperti[0] is not scaglioni_ordinati[-1]:
             raise ValueError("Lo scaglione illimitato deve essere quello con soglia_min più alta")
 
         for corrente, successivo in zip(scaglioni_ordinati, scaglioni_ordinati[1:]):
@@ -56,6 +56,7 @@ class Imposta:
         l'imponibile non la raggiunge — indipendente dall'ordine di iterazione.
         """
         return _calculate_tax(self.scaglioni, imponibile)
+
     
 def _calculate_tax(scaglioni: tuple[Scaglione, ...], imponibile: Decimal) -> Decimal:
         """
