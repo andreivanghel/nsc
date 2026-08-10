@@ -20,6 +20,7 @@ class Scaglione:
 class Imposta:
     nome: str
     scaglioni: tuple[Scaglione, ...]
+    fonte: str | None = None
 
     # Validazione di coerenza degli scaglioni
     def __post_init__(self):
@@ -54,11 +55,17 @@ class Imposta:
         che vi rientra. Ogni scaglione clippa la propria fetta a zero se
         l'imponibile non la raggiunge — indipendente dall'ordine di iterazione.
         """
+        return _calculate_tax(self.scaglioni, imponibile)
+    
+def _calculate_tax(scaglioni: tuple[Scaglione, ...], imponibile: Decimal) -> Decimal:
+        """
+        Funzione helper per calcolare l'imposta, senza dipendere da self. Serve per testare la logica di calcolo senza dover costruire un oggetto Imposta.
+        """
         if imponibile < Decimal(0):
             raise ValueError("Imponibile cannot be negative")
 
         tax = Decimal(0)
-        for scaglione in self.scaglioni:
+        for scaglione in scaglioni:
             tetto = scaglione.soglia_max if scaglione.soglia_max is not None else imponibile
             fetta_tassabile = max(Decimal(0), min(imponibile, tetto) - scaglione.soglia_min)
             tax += fetta_tassabile * scaglione.aliquota
