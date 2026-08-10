@@ -1,5 +1,8 @@
 from decimal import Decimal
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 # Import corretti basati sul tuo sorgente
@@ -16,6 +19,10 @@ app = FastAPI(
 # Usiamo Decimal per matchare al 100% l'input richiesto dal tuo dominio
 class RalRequest(BaseModel):
     ral: Decimal = Field(..., gt=0, description="Retribuzione Annua Lorda (deve essere > 0)")
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # --- ENDPOINT ---
 @app.post("/api/v1/net-salary")
@@ -36,4 +43,7 @@ async def calculate_net_salary(payload: RalRequest):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse(STATIC_DIR / "index.html")

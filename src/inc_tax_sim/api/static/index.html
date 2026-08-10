@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcolatore Stipendio Netto - <v0 class="1 0"></v0></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen font-sans">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <div class="mb-6 text-center">
+            <h1 class="text-2xl font-bold text-gray-800">Calcolo Busta Paga</h1>
+            <p class="text-sm text-gray-500 mt-1">Impiegato indeterminato - Milano</p>
+        </div>
+
+        <form id="salaryForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">RAL (Retribuzione Annua Lorda)</label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="text-gray-500 sm:text-sm">€</span>
+                    </div>
+                    <input type="number" id="ralInput" required min="1" step="0.01" 
+                           class="pl-8 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border" 
+                           placeholder="es. 35000">
+                </div>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                Calcola Netto
+            </button>
+        </form>
+
+        <!-- Area Risultati (Nascosta di default) -->
+        <div id="resultsArea" class="mt-8 hidden">
+            <div class="border-t border-gray-200 pt-6">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-gray-600 font-medium">Netto Mensile (13 mensilità)</span>
+                    <span id="nettoMensile" class="text-2xl font-bold text-green-600"></span>
+                </div>
+                <div class="flex justify-between items-center mb-6 text-sm">
+                    <span class="text-gray-500">Netto Annuo</span>
+                    <span id="nettoAnnuo" class="text-gray-700 font-semibold"></span>
+                </div>
+
+                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Dettaglio Trattenute</h3>
+                <ul id="trattenuteList" class="space-y-2 text-sm text-gray-600 bg-gray-50 p-4 rounded-md border border-gray-100">
+                    <!-- Iniettato da JS -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('salaryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ral = document.getElementById('ralInput').value;
+            const btn = e.target.querySelector('button');
+            btn.textContent = "Calcolo in corso...";
+            
+            try {
+                const response = await fetch('/api/v1/net-salary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ral: parseFloat(ral) })
+                });
+                
+                const json = await response.json();
+                
+                if (response.ok) {
+                    const data = json.data;
+                    const formatter = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+                    
+                    document.getElementById('nettoMensile').textContent = formatter.format(data.netto_mensile);
+                    document.getElementById('nettoAnnuo').textContent = formatter.format(data.netto_annuo);
+                    
+                    const list = document.getElementById('trattenuteList');
+                    list.innerHTML = '';
+                    
+                    // Assumo che la tua tupla/lista di trattenute si serializzi con le chiavi del tuo DTO
+                    data.trattenute.forEach(t => {
+                        // N.B: Se il tuo DTO usa nomi di attributi diversi da t.nome / t.importo, aggiustali qui!
+                        const nomeTrattenuta = Object.values(t)[0]; 
+                        const importoTrattenuta = Object.values(t)[1];
+
+                        list.innerHTML += `
+                            <li class="flex justify-between border-b border-gray-200 pb-1 last:border-0 last:pb-0">
+                                <span>${nomeTrattenuta}</span>
+                                <span class="text-red-500 font-medium">- ${formatter.format(importoTrattenuta)}</span>
+                            </li>
+                        `;
+                    });
+                    
+                    document.getElementById('resultsArea').classList.remove('hidden');
+                } else {
+                    alert("Errore: " + JSON.stringify(json.detail));
+                }
+            } catch (err) {
+                alert("Errore di connessione col server.");
+            } finally {
+                btn.textContent = "Calcola Netto";
+            }
+        });
+    </script>
+</body>
+</html>
