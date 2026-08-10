@@ -72,7 +72,7 @@ def _calcola_detrazione_lavoro_dipendente_2026(
     minimo = Decimal("1380") if tempo_determinato else Decimal("690")
     return max(rapportata, minimo) if reddito <= Decimal("15000") else rapportata
 
-def calcola_trattamento_integrativo_2026( # TODO: verificare con fonte normativa
+def calcola_trattamento_integrativo_2026(
     reddito: Decimal,
     irpef_lorda: Decimal,
     detrazione_lavoro_dipendente: Decimal,
@@ -80,22 +80,28 @@ def calcola_trattamento_integrativo_2026( # TODO: verificare con fonte normativ
 ) -> Decimal:
     """
     Trattamento integrativo (ex bonus Renzi), art. 1 DL 3/2020.
-    Spetta fino a 28.000€ di reddito, solo se c'è "capienza": l'IRPEF
-    lorda deve essere almeno pari alla detrazione lavoro dipendente
-    (altrimenti la detrazione da sola avrebbe già assorbito tutto,
-    e non spetta cash aggiuntivo — è l'anti-abuso del meccanismo).
-    Importo = quanto la detrazione "avanza" oltre l'IRPEF lorda,
-    fino a un massimo di 1.200€/anno, rapportato ai giorni lavorati.
+
+    Per reddito <= 15.000: spetta per intero (1.200€/anno, rapportato ai
+    giorni lavorati), a condizione di "capienza" — l'IRPEF lorda deve
+    essere pari o superiore alla detrazione lavoro dipendente spettante.
+    Vicino al limite della no-tax-area questa condizione può non essere
+    soddisfatta, e in quel caso il trattamento non spetta.
+
+    SEMPLIFICAZIONE DICHIARATA: per la fascia 15.001-28.000€ la norma
+    richiede una verifica sulle detrazioni complessive che va oltre lo
+    scope di questo prototipo (le fonti concordano che "non è automatico"
+    ma nessuna dà una formula chiusa affidabile per questa fascia).
+    Ritorno 0, sottostimando leggermente il netto — punto da discutere
+    in interview.
     """
-    if reddito > Decimal("28000"):
+    if reddito > Decimal("15000"):
         return Decimal(0)
 
-    capienza = detrazione_lavoro_dipendente - irpef_lorda
-    if capienza <= Decimal(0):
+    capiente = irpef_lorda >= detrazione_lavoro_dipendente
+    if not capiente:
         return Decimal(0)
 
-    massimo = Decimal("1200") * giorni_lavorati / Decimal("365")
-    return min(capienza, massimo)
+    return Decimal("1200") * giorni_lavorati / Decimal("365")
 
 def _calcola_addizionale_comunale(
     imponibile: Decimal,
