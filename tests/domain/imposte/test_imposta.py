@@ -1,6 +1,6 @@
 from decimal import Decimal
 import pytest
-from inc_tax_sim.domain.value_objects.fiscal import Imposta, Scaglione
+from inc_tax_sim.domain.value_objects.tax import Imposta, Scaglione
 
 
 class TestCalculateTax:
