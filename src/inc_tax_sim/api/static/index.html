@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calcolatore Stipendio Netto - <v0 class="1 0"></v0></title>
+    <title>Calcolatore Stipendio Netto - Jet HR Prototype</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen font-sans">
+<body class="bg-gray-50 flex items-center justify-center min-h-screen font-sans py-10">
 
-    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg">
         <div class="mb-6 text-center">
             <h1 class="text-2xl font-bold text-gray-800">Calcolo Busta Paga</h1>
-            <p class="text-sm text-gray-500 mt-1">Impiegato indeterminato - Milano</p>
+            <p class="text-sm text-gray-500 mt-1">Impiegato indeterminato - Milano (2026)</p>
         </div>
 
         <form id="salaryForm" class="space-y-4">
@@ -26,28 +26,50 @@
                            placeholder="es. 35000">
                 </div>
             </div>
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-md transition-colors">
                 Calcola Netto
             </button>
         </form>
 
-        <!-- Area Risultati (Nascosta di default) -->
-        <div id="resultsArea" class="mt-8 hidden">
-            <div class="border-t border-gray-200 pt-6">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-600 font-medium">Netto Mensile (13 mensilità)</span>
-                    <span id="nettoMensile" class="text-2xl font-bold text-green-600"></span>
+        <!-- Area Risultati -->
+        <div id="resultsArea" class="mt-8 hidden space-y-6">
+            
+            <!-- Banner Sintesi Netto -->
+            <div class="border-t border-b border-gray-100 py-4 bg-green-50/50 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-gray-700 font-semibold">Netto Mensile (13 mensilità)</span>
+                    <span id="nettoMensile" class="text-2xl font-extrabold text-green-600"></span>
                 </div>
-                <div class="flex justify-between items-center mb-6 text-sm">
-                    <span class="text-gray-500">Netto Annuo</span>
-                    <span id="nettoAnnuo" class="text-gray-700 font-semibold"></span>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-500">Netto Annuo Complessivo</span>
+                    <span id="nettoAnnuo" class="text-gray-800 font-bold"></span>
                 </div>
+            </div>
 
-                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Dettaglio Trattenute</h3>
-                <ul id="trattenuteList" class="space-y-2 text-sm text-gray-600 bg-gray-50 p-4 rounded-md border border-gray-100">
-                    <!-- Iniettato da JS -->
+            <!-- Sezione 1: Trattenute -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Trattenute al Lordo (-)</h3>
+                <ul id="trattenuteList" class="space-y-2 text-sm text-gray-600 bg-gray-50 p-3.5 rounded-md border border-gray-100">
+                    <!-- Iniettato via JS -->
                 </ul>
             </div>
+
+            <!-- Sezione 2: Benefici e Integrativi -->
+            <div id="beneficiContainer" class="hidden">
+                <h3 class="text-xs font-bold text-green-600 uppercase tracking-wider mb-2">Benefici e Bonus Inclusi (+)</h3>
+                <ul id="beneficiList" class="space-y-2 text-sm text-gray-600 bg-green-50/40 p-3.5 rounded-md border border-green-100">
+                    <!-- Iniettato via JS -->
+                </ul>
+            </div>
+
+            <!-- Sezione 3: Detrazioni Applicate -->
+            <div id="detrazioniContainer" class="hidden">
+                <h3 class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Detrazioni Fiscali Applicate (Sconto IRPEF)</h3>
+                <ul id="detrazioniList" class="space-y-2 text-sm text-gray-600 bg-blue-50/40 p-3.5 rounded-md border border-blue-100">
+                    <!-- Iniettato via JS -->
+                </ul>
+            </div>
+
         </div>
     </div>
 
@@ -69,28 +91,68 @@
                 
                 if (response.ok) {
                     const data = json.data;
-                    const formatter = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+                    const fmt = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
                     
-                    document.getElementById('nettoMensile').textContent = formatter.format(data.netto_mensile);
-                    document.getElementById('nettoAnnuo').textContent = formatter.format(data.netto_annuo);
+                    // 1. Sintesi
+                    document.getElementById('nettoMensile').textContent = fmt.format(data.netto_mensile);
+                    document.getElementById('nettoAnnuo').textContent = fmt.format(data.netto_annuo);
                     
-                    const list = document.getElementById('trattenuteList');
-                    list.innerHTML = '';
-                    
-                    // Assumo che la tua tupla/lista di trattenute si serializzi con le chiavi del tuo DTO
-                    data.trattenute.forEach(t => {
-                        // N.B: Se il tuo DTO usa nomi di attributi diversi da t.nome / t.importo, aggiustali qui!
-                        const nomeTrattenuta = Object.values(t)[0]; 
-                        const importoTrattenuta = Object.values(t)[1];
-
-                        list.innerHTML += `
-                            <li class="flex justify-between border-b border-gray-200 pb-1 last:border-0 last:pb-0">
-                                <span>${nomeTrattenuta}</span>
-                                <span class="text-red-500 font-medium">- ${formatter.format(importoTrattenuta)}</span>
-                            </li>
-                        `;
+                    // 2. Render Trattenute (-)
+                    const trattenuteList = document.getElementById('trattenuteList');
+                    trattenuteList.innerHTML = '';
+                    data.trattenute.forEach(item => {
+                        if (parseFloat(item.importo) > 0) {
+                            trattenuteList.innerHTML += `
+                                <li class="flex justify-between border-b border-gray-200/60 pb-1.5 last:border-0 last:pb-0">
+                                    <span>${item.nome}</span>
+                                    <span class="text-red-500 font-medium">- ${fmt.format(item.importo)}</span>
+                                </li>
+                            `;
+                        }
                     });
-                    
+
+                    // 3. Render Benefici (+)
+                    const beneficiContainer = document.getElementById('beneficiContainer');
+                    const beneficiList = document.getElementById('beneficiList');
+                    beneficiList.innerHTML = '';
+                    let haBenefici = false;
+
+                    if (data.benefici && data.benefici.length > 0) {
+                        data.benefici.forEach(item => {
+                            if (parseFloat(item.importo) > 0) {
+                                haBenefici = true;
+                                beneficiList.innerHTML += `
+                                    <li class="flex justify-between border-b border-green-200/60 pb-1.5 last:border-0 last:pb-0">
+                                        <span>${item.nome}</span>
+                                        <span class="text-green-600 font-semibold">+ ${fmt.format(item.importo)}</span>
+                                    </li>
+                                `;
+                            }
+                        });
+                    }
+                    beneficiContainer.classList.toggle('hidden', !haBenefici);
+
+                    // 4. Render Detrazioni
+                    const detrazioniContainer = document.getElementById('detrazioniContainer');
+                    const detrazioniList = document.getElementById('detrazioniList');
+                    detrazioniList.innerHTML = '';
+                    let haDetrazioni = false;
+
+                    if (data.detrazioni_applicate && data.detrazioni_applicate.length > 0) {
+                        data.detrazioni_applicate.forEach(item => {
+                            if (parseFloat(item.importo) > 0) {
+                                haDetrazioni = true;
+                                detrazioniList.innerHTML += `
+                                    <li class="flex justify-between border-b border-blue-200/60 pb-1.5 last:border-0 last:pb-0">
+                                        <span>${item.nome}</span>
+                                        <span class="text-blue-700 font-medium">${fmt.format(item.importo)}</span>
+                                    </li>
+                                `;
+                            }
+                        });
+                    }
+                    detrazioniContainer.classList.toggle('hidden', !haDetrazioni);
+
                     document.getElementById('resultsArea').classList.remove('hidden');
                 } else {
                     alert("Errore: " + JSON.stringify(json.detail));
