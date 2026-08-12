@@ -1,0 +1,42 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, first-implementation ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality-and-tests:
+    name: Code Quality & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Run Ruff (Lint Check)
+        run: uv run ruff check .
+
+      - name: Run Ruff (Formatting Check)
+        run: uv run ruff format --check .
+
+      - name: Run Mypy (Type Check)
+        run: uv run mypy src
+
+      - name: Run Pytest with Coverage
+        run: uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=80
