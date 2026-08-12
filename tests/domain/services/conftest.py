@@ -39,4 +39,15 @@ def regime_test() -> RegimeFiscale:
         trattamento_integrativo=lambda imponibile, irpef_lorda, detrazione, giorni_lavorati=365: (
             Decimal("50") if irpef_lorda >= detrazione else Decimal(0)
         ),
+        # Numeri tondi, condizionati a imponibile > 0 (a differenza di
+        # detrazione_lavoro_dipendente sopra) perché sono benefici che
+        # si SOMMANO al netto senza floor protettivo: se fossero
+        # incondizionati, RAL=0 produrrebbe un netto positivo e
+        # romperebbe l'invariante testata in TestRALZero.
+        somma_integrativa_cuneo=lambda imponibile, giorni_lavorati=365: (
+            Decimal("20") if imponibile > Decimal(0) else Decimal(0)
+        ),
+        ulteriore_detrazione_cuneo=lambda imponibile, giorni_lavorati=365: (
+            Decimal("30") if imponibile > Decimal(0) else Decimal(0)
+        ),
     )
