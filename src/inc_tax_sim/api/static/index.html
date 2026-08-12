@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcolatore Stipendio Netto - Jet HR Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen font-sans py-10">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg">
+        <div class="mb-6 text-center">
+            <h1 class="text-2xl font-bold text-gray-800">Calcolo Busta Paga</h1>
+            <p class="text-sm text-gray-500 mt-1">Impiegato indeterminato - Milano (2026)</p>
+        </div>
+
+        <form id="salaryForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">RAL (Retribuzione Annua Lorda)</label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="text-gray-500 sm:text-sm">€</span>
+                    </div>
+                    <input type="number" id="ralInput" required min="1" step="0.01"
+                           class="pl-8 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
+                           placeholder="es. 35000">
+                </div>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-md transition-colors">
+                Calcola Netto
+            </button>
+        </form>
+
+        <!-- Area Risultati -->
+        <div id="resultsArea" class="mt-8 hidden space-y-6">
+
+            <!-- Banner Sintesi Netto -->
+            <div class="border-t border-b border-gray-100 py-4 bg-green-50/50 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-gray-700 font-semibold">Netto Mensile (13 mensilità)</span>
+                    <span id="nettoMensile" class="text-2xl font-extrabold text-green-600"></span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-500">Netto Annuo Complessivo</span>
+                    <span id="nettoAnnuo" class="text-gray-800 font-bold"></span>
+                </div>
+            </div>
+
+            <!-- Sezione 1: Trattenute -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Trattenute al Lordo (-)</h3>
+                <ul id="trattenuteList" class="space-y-2 text-sm text-gray-600 bg-gray-50 p-3.5 rounded-md border border-gray-100">
+                    <!-- Iniettato via JS -->
+                </ul>
+            </div>
+
+            <!-- Sezione 2: Benefici e Integrativi -->
+            <div id="beneficiContainer" class="hidden">
+                <h3 class="text-xs font-bold text-green-600 uppercase tracking-wider mb-2">Benefici e Bonus Inclusi (+)</h3>
+                <ul id="beneficiList" class="space-y-2 text-sm text-gray-600 bg-green-50/40 p-3.5 rounded-md border border-green-100">
+                    <!-- Iniettato via JS -->
+                </ul>
+            </div>
+
+            <!-- Sezione 3: Detrazioni Applicate -->
+            <div id="detrazioniContainer" class="hidden">
+                <h3 class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Detrazioni Fiscali Applicate (Sconto IRPEF)</h3>
+                <ul id="detrazioniList" class="space-y-2 text-sm text-gray-600 bg-blue-50/40 p-3.5 rounded-md border border-blue-100">
+                    <!-- Iniettato via JS -->
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('salaryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ral = document.getElementById('ralInput').value;
+            const btn = e.target.querySelector('button');
+            btn.textContent = "Calcolo in corso...";
+
+            try {
+                const response = await fetch('/api/v1/net-salary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ral: parseFloat(ral) })
+                });
+
+                const json = await response.json();
+
+                if (response.ok) {
+                    const data = json.data;
+                    const fmt = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+
+                    // 1. Sintesi
+                    document.getElementById('nettoMensile').textContent = fmt.format(data.netto_mensile);
+                    document.getElementById('nettoAnnuo').textContent = fmt.format(data.netto_annuo);
+
+                    // 2. Render Trattenute (-)
+                    const trattenuteList = document.getElementById('trattenuteList');
+                    trattenuteList.innerHTML = '';
+                    data.trattenute.forEach(item => {
+                        if (parseFloat(item.importo) > 0) {
+                            trattenuteList.innerHTML += `
+                                <li class="flex justify-between border-b border-gray-200/60 pb-1.5 last:border-0 last:pb-0">
+                                    <span>${item.nome}</span>
+                                    <span class="text-red-500 font-medium">- ${fmt.format(item.importo)}</span>
+                                </li>
+                            `;
+                        }
+                    });
+
+                    // 3. Render Benefici (+)
+                    const beneficiContainer = document.getElementById('beneficiContainer');
+                    const beneficiList = document.getElementById('beneficiList');
+                    beneficiList.innerHTML = '';
+                    let haBenefici = false;
+
+                    if (data.benefici && data.benefici.length > 0) {
+                        data.benefici.forEach(item => {
+                            if (parseFloat(item.importo) > 0) {
+                                haBenefici = true;
+                                beneficiList.innerHTML += `
+                                    <li class="flex justify-between border-b border-green-200/60 pb-1.5 last:border-0 last:pb-0">
+                                        <span>${item.nome}</span>
+                                        <span class="text-green-600 font-semibold">+ ${fmt.format(item.importo)}</span>
+                                    </li>
+                                `;
+                            }
+                        });
+                    }
+                    beneficiContainer.classList.toggle('hidden', !haBenefici);
+
+                    // 4. Render Detrazioni
+                    const detrazioniContainer = document.getElementById('detrazioniContainer');
+                    const detrazioniList = document.getElementById('detrazioniList');
+                    detrazioniList.innerHTML = '';
+                    let haDetrazioni = false;
+
+                    if (data.detrazioni_applicate && data.detrazioni_applicate.length > 0) {
+                        data.detrazioni_applicate.forEach(item => {
+                            if (parseFloat(item.importo) > 0) {
+                                haDetrazioni = true;
+                                detrazioniList.innerHTML += `
+                                    <li class="flex justify-between border-b border-blue-200/60 pb-1.5 last:border-0 last:pb-0">
+                                        <span>${item.nome}</span>
+                                        <span class="text-blue-700 font-medium">${fmt.format(item.importo)}</span>
+                                    </li>
+                                `;
+                            }
+                        });
+                    }
+                    detrazioniContainer.classList.toggle('hidden', !haDetrazioni);
+
+                    document.getElementById('resultsArea').classList.remove('hidden');
+                } else {
+                    alert("Errore: " + JSON.stringify(json.detail));
+                }
+            } catch (err) {
+                alert("Errore di connessione col server.");
+            } finally {
+                btn.textContent = "Calcola Netto";
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,11 +1,60 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "inc-tax-sim"
 version = "0.1.0"
 requires-python = "==3.12.*"
-dependencies = []
+dependencies = [
+    "fastapi>=0.141.1",
+    "uvicorn>=0.52.1",
+]
 
 [dependency-groups]
 dev = [
+    "mypy>=2.3.0",
+    "pre-commit>=4.6.2",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.2",
 ]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --strict-markers --cov=src/inc_tax_sim --cov-report=term-missing"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 150
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# E: pycodestyle errors, F: Pyflakes, I: isort, N: pep8-naming, UP: pyupgrade, B: bugbear
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+explicit_package_bases = true
+mypy_path = "src"
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["fastapi.*", "starlette.*", "pydantic.*", "pytest.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
