@@ -2,8 +2,8 @@ from decimal import Decimal
 
 import pytest
 
-from inc_tax_sim.domain.value_objects.tax import Imposta, Scaglione
 from inc_tax_sim.domain.value_objects.fiscal_regime import RegimeFiscale
+from inc_tax_sim.domain.value_objects.tax import Imposta, Scaglione
 
 
 @pytest.fixture
@@ -32,9 +32,7 @@ def regime_test() -> RegimeFiscale:
             nome="add_reg_test",
             scaglioni=(Scaglione(Decimal(0), None, Decimal("0.05")),),
         ),
-        addizionale_comunale=lambda imponibile: (
-            Decimal(0) if imponibile <= Decimal(500) else imponibile * Decimal("0.02")
-        ),
+        addizionale_comunale=lambda imponibile: Decimal(0) if imponibile <= Decimal(500) else imponibile * Decimal("0.02"),  # type: ignore[arg-type]
         detrazione_lavoro_dipendente=lambda imponibile, giorni_lavorati=365, tempo_determinato=False: Decimal("100"),
         trattamento_integrativo=lambda imponibile, irpef_lorda, detrazione, giorni_lavorati=365: (
             Decimal("50") if irpef_lorda >= detrazione else Decimal(0)
@@ -44,10 +42,6 @@ def regime_test() -> RegimeFiscale:
         # si SOMMANO al netto senza floor protettivo: se fossero
         # incondizionati, RAL=0 produrrebbe un netto positivo e
         # romperebbe l'invariante testata in TestRALZero.
-        somma_integrativa_cuneo=lambda imponibile, giorni_lavorati=365: (
-            Decimal("20") if imponibile > Decimal(0) else Decimal(0)
-        ),
-        ulteriore_detrazione_cuneo=lambda imponibile, giorni_lavorati=365: (
-            Decimal("30") if imponibile > Decimal(0) else Decimal(0)
-        ),
+        somma_integrativa_cuneo=lambda imponibile, giorni_lavorati=365: Decimal("20") if imponibile > Decimal(0) else Decimal(0),
+        ulteriore_detrazione_cuneo=lambda imponibile, giorni_lavorati=365: Decimal("30") if imponibile > Decimal(0) else Decimal(0),
     )

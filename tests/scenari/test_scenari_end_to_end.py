@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 import pytest
 
 from inc_tax_sim.domain.services.net_salary_calculator import CalcolaNettoService
@@ -25,6 +23,4 @@ def test_ral_a_netto_annuo(service, caso):
 
 def test_avviso_se_nessun_caso_ancora_inserito():
     if not CASI_NETTO:
-        pytest.skip(
-            "Nessun caso in tests/scenari/casi_netto.py"
-        )
+        pytest.skip("Nessun caso in tests/scenari/casi_netto.py")

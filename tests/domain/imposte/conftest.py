@@ -1,5 +1,7 @@
 from decimal import Decimal
+
 import pytest
+
 from inc_tax_sim.domain.value_objects.tax import Imposta, Scaglione
 
 
@@ -15,7 +17,7 @@ def scaglioni_tre_fasce() -> tuple[Scaglione, ...]:
 
 
 @pytest.fixture
-def imposta_progressiva(scaglioni_tre_fasce) -> Imposta:
+def imposta_progressiva(scaglioni_tre_fasce) -> Imposta:  # type: ignore[no-untyped-def]
     return Imposta(nome="test_progressiva", scaglioni=scaglioni_tre_fasce)
 
 

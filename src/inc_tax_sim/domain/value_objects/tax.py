@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from itertools import pairwise
 
 
 @dataclass(frozen=True)
@@ -8,13 +9,14 @@ class Scaglione:
     soglia_max: Decimal | None  # None = ultimo scaglione, aperto
     aliquota: Decimal
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.soglia_min < Decimal(0):
             raise ValueError("soglia_min non può essere negativo")
         if self.soglia_max is not None and self.soglia_max <= self.soglia_min:
             raise ValueError("soglia_max deve essere maggiore di soglia_min")
         if not (Decimal(0) <= self.aliquota <= Decimal(1)):
             raise ValueError("aliquota deve essere compreso tra 0 e 1")
+
 
 @dataclass(frozen=True)
 class Imposta:
@@ -23,7 +25,7 @@ class Imposta:
     fonte: str | None = None
 
     # Validazione di coerenza degli scaglioni
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.scaglioni:
             raise ValueError("Almeno uno scaglione richiesto")
 
@@ -43,11 +45,9 @@ class Imposta:
         if aperti and aperti[0] is not scaglioni_ordinati[-1]:
             raise ValueError("Lo scaglione illimitato deve essere quello con soglia_min più alta")
 
-        for corrente, successivo in zip(scaglioni_ordinati, scaglioni_ordinati[1:]):
+        for corrente, successivo in pairwise(scaglioni_ordinati):
             if corrente.soglia_max != successivo.soglia_min:
-                raise ValueError(
-                    f"Scaglioni non contigui: {corrente.soglia_max} != {successivo.soglia_min}"
-                )
+                raise ValueError(f"Scaglioni non contigui: {corrente.soglia_max} != {successivo.soglia_min}")
 
     def calculate_tax(self, imponibile: Decimal) -> Decimal:
         """
@@ -57,17 +57,18 @@ class Imposta:
         """
         return _calculate_tax(self.scaglioni, imponibile)
 
-    
-def _calculate_tax(scaglioni: tuple[Scaglione, ...], imponibile: Decimal) -> Decimal:
-        """
-        Funzione helper per calcolare l'imposta, senza dipendere da self. Serve per testare la logica di calcolo senza dover costruire un oggetto Imposta.
-        """
-        if imponibile < Decimal(0):
-            raise ValueError("Imponibile cannot be negative")
 
-        tax = Decimal(0)
-        for scaglione in scaglioni:
-            tetto = scaglione.soglia_max if scaglione.soglia_max is not None else imponibile
-            fetta_tassabile = max(Decimal(0), min(imponibile, tetto) - scaglione.soglia_min)
-            tax += fetta_tassabile * scaglione.aliquota
-        return tax
+def _calculate_tax(scaglioni: tuple[Scaglione, ...], imponibile: Decimal) -> Decimal:
+    """
+    Funzione helper per calcolare l'imposta, senza dipendere da self.
+    Serve per testare la logica di calcolo senza dover costruire un oggetto Imposta.
+    """
+    if imponibile < Decimal(0):
+        raise ValueError("Imponibile cannot be negative")
+
+    tax = Decimal(0)
+    for scaglione in scaglioni:
+        tetto = scaglione.soglia_max if scaglione.soglia_max is not None else imponibile
+        fetta_tassabile = max(Decimal(0), min(imponibile, tetto) - scaglione.soglia_min)
+        tax += fetta_tassabile * scaglione.aliquota
+    return tax

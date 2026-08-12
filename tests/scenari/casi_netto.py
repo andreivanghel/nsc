@@ -5,6 +5,7 @@ astratti dei test unitari.
 
 Un caso = una riga.
 """
+
 from dataclasses import dataclass
 from decimal import Decimal
 

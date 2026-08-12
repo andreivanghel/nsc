@@ -1,8 +1,52 @@
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Callable
+from typing import Protocol
 
 from inc_tax_sim.domain.value_objects.tax import Imposta, Scaglione
+
+
+class DetrazioneLavoroDipendenteFn(Protocol):
+    def __call__(
+        self,
+        reddito: Decimal,
+        giorni_lavorati: int = 365,
+        tempo_determinato: bool = False,
+    ) -> Decimal: ...
+
+
+class AddizionaleComunaleFn(Protocol):
+    def __call__(
+        self,
+        imponibile: Decimal,
+        soglia_esenzione: Decimal = ...,
+        aliquota: Decimal = ...,
+    ) -> Decimal: ...
+
+
+class TrattamentoIntegrativoFn(Protocol):
+    def __call__(
+        self,
+        reddito: Decimal,
+        irpef_lorda: Decimal,
+        detrazione_lavoro_dipendente: Decimal,
+        giorni_lavorati: int = 365,
+    ) -> Decimal: ...
+
+
+class SommaIntegrativaCuneoFn(Protocol):
+    def __call__(
+        self,
+        reddito: Decimal,
+        giorni_lavorati: int = 365,
+    ) -> Decimal: ...
+
+
+class UlterioreDetrazioneCuneoFn(Protocol):
+    def __call__(
+        self,
+        reddito: Decimal,
+        giorni_lavorati: int = 365,
+    ) -> Decimal: ...
 
 
 @dataclass(frozen=True)
@@ -16,16 +60,16 @@ class RegimeFiscale:
 
     addizionale_regionale: Imposta
 
-    addizionale_comunale: Callable[[Decimal], Decimal]
-    detrazione_lavoro_dipendente: Callable[[Decimal, int, bool], Decimal]
-    trattamento_integrativo: Callable[[Decimal, Decimal, Decimal, int], Decimal]
+    addizionale_comunale: AddizionaleComunaleFn
+    detrazione_lavoro_dipendente: DetrazioneLavoroDipendenteFn
+    trattamento_integrativo: TrattamentoIntegrativoFn
 
     # Taglio del cuneo fiscale (art. 1 commi 4 e 6, legge 207/2024,
     # confermato strutturale per il 2026 — v. funzioni sotto). Due
     # meccanismi distinti dal trattamento_integrativo (DL 3/2020) sopra,
     # pur convivendo con esso sulla stessa fascia di reddito bassa.
-    somma_integrativa_cuneo: Callable[[Decimal, int], Decimal]
-    ulteriore_detrazione_cuneo: Callable[[Decimal, int], Decimal]
+    somma_integrativa_cuneo: SommaIntegrativaCuneoFn
+    ulteriore_detrazione_cuneo: UlterioreDetrazioneCuneoFn
 
 
 # --- INPS
@@ -63,9 +107,12 @@ ADDIZIONALE_REGIONALE_LOMBARDIA_2026 = Imposta(
     ),
     fonte="https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/addregirpef/addregirpef.php?reg=10",
 )
-ADDIZIONALE_COMUNALE_MILANO_2026 = Decimal("0.008") # fonte="https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/risultato.htm?anno=9999&pr=MI&cc=F205&r=1",
+ADDIZIONALE_COMUNALE_MILANO_2026 = Decimal(
+    "0.008"
+)  # fonte="https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/risultato.htm?anno=9999&pr=MI&cc=F205&r=1",
 
 SOGLIA_ESENZIONE_ADD_COMUNALE_MILANO = Decimal("23000")
+
 
 def _calcola_detrazione_lavoro_dipendente_2026(
     reddito: Decimal,
@@ -84,6 +131,7 @@ def _calcola_detrazione_lavoro_dipendente_2026(
     rapportata = teorica * giorni_lavorati / Decimal("365")
     minimo = Decimal("1380") if tempo_determinato else Decimal("690")
     return max(rapportata, minimo) if reddito <= Decimal("15000") else rapportata
+
 
 def calcola_trattamento_integrativo_2026(
     reddito: Decimal,
@@ -115,6 +163,7 @@ def calcola_trattamento_integrativo_2026(
         return Decimal(0)
 
     return Decimal("1200") * giorni_lavorati / Decimal("365")
+
 
 # --- Taglio del cuneo fiscale (art. 1 commi 4 e 6, legge 207/2024)
 #
@@ -229,6 +278,7 @@ def _calcola_addizionale_comunale(
         return Decimal(0)
     return imponibile * aliquota
 
+
 REGIME_2026_MILANO = RegimeFiscale(
     anno=2026,
     comune="Milano",
@@ -236,9 +286,15 @@ REGIME_2026_MILANO = RegimeFiscale(
     inps=INPS_2026,
     irpef=IRPEF_2026,
     addizionale_regionale=ADDIZIONALE_REGIONALE_LOMBARDIA_2026,
-    addizionale_comunale=lambda imponibile: _calcola_addizionale_comunale(imponibile, SOGLIA_ESENZIONE_ADD_COMUNALE_MILANO, ADDIZIONALE_COMUNALE_MILANO_2026),
-    detrazione_lavoro_dipendente=lambda imponibile, giorni_lavorati=365, tempo_determinato=False: _calcola_detrazione_lavoro_dipendente_2026(imponibile, giorni_lavorati, tempo_determinato),
-    trattamento_integrativo=lambda imponibile, irpef_lorda, detrazione_lavoro_dipendente, giorni_lavorati=365: calcola_trattamento_integrativo_2026(imponibile, irpef_lorda, detrazione_lavoro_dipendente, giorni_lavorati),
+    addizionale_comunale=lambda imponibile, soglia=SOGLIA_ESENZIONE_ADD_COMUNALE_MILANO, aliquota=ADDIZIONALE_COMUNALE_MILANO_2026: (
+        _calcola_addizionale_comunale(imponibile, soglia, aliquota)
+    ),
+    detrazione_lavoro_dipendente=lambda imponibile, giorni_lavorati=365, tempo_determinato=False: _calcola_detrazione_lavoro_dipendente_2026(
+        imponibile, giorni_lavorati, tempo_determinato
+    ),
+    trattamento_integrativo=lambda imponibile, irpef_lorda, detrazione_lavoro_dipendente, giorni_lavorati=365: calcola_trattamento_integrativo_2026(
+        imponibile, irpef_lorda, detrazione_lavoro_dipendente, giorni_lavorati
+    ),
     somma_integrativa_cuneo=lambda imponibile, giorni_lavorati=365: _calcola_somma_integrativa_cuneo_2026(imponibile, giorni_lavorati),
     ulteriore_detrazione_cuneo=lambda imponibile, giorni_lavorati=365: _calcola_ulteriore_detrazione_cuneo_2026(imponibile, giorni_lavorati),
 )

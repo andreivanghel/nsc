@@ -21,8 +21,8 @@
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <span class="text-gray-500 sm:text-sm">€</span>
                     </div>
-                    <input type="number" id="ralInput" required min="1" step="0.01" 
-                           class="pl-8 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border" 
+                    <input type="number" id="ralInput" required min="1" step="0.01"
+                           class="pl-8 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
                            placeholder="es. 35000">
                 </div>
             </div>
@@ -33,7 +33,7 @@
 
         <!-- Area Risultati -->
         <div id="resultsArea" class="mt-8 hidden space-y-6">
-            
+
             <!-- Banner Sintesi Netto -->
             <div class="border-t border-b border-gray-100 py-4 bg-green-50/50 rounded-lg p-4">
                 <div class="flex justify-between items-center mb-1">
@@ -79,24 +79,24 @@
             const ral = document.getElementById('ralInput').value;
             const btn = e.target.querySelector('button');
             btn.textContent = "Calcolo in corso...";
-            
+
             try {
                 const response = await fetch('/api/v1/net-salary', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ral: parseFloat(ral) })
                 });
-                
+
                 const json = await response.json();
-                
+
                 if (response.ok) {
                     const data = json.data;
                     const fmt = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
-                    
+
                     // 1. Sintesi
                     document.getElementById('nettoMensile').textContent = fmt.format(data.netto_mensile);
                     document.getElementById('nettoAnnuo').textContent = fmt.format(data.netto_annuo);
-                    
+
                     // 2. Render Trattenute (-)
                     const trattenuteList = document.getElementById('trattenuteList');
                     trattenuteList.innerHTML = '';

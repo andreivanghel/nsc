@@ -32,7 +32,12 @@ class TestPipelineStandard:
         service = CalcolaNettoService(regime_test)
         risultato = service.calcola(Decimal(2000), mensilita=13)
         nomi = [v.nome for v in risultato.trattenute]
-        assert nomi == ["Contributi INPS", "IRPEF netta", "Addizionale regionale", "Addizionale comunale"]
+        assert nomi == [
+            "Contributi INPS",
+            "IRPEF netta",
+            "Addizionale regionale",
+            "Addizionale comunale",
+        ]
 
     def test_breakdown_importi(self, regime_test):
         service = CalcolaNettoService(regime_test)

@@ -1,7 +1,5 @@
 from decimal import Decimal
 
-import pytest
-
 from inc_tax_sim.domain.value_objects.fiscal_regime import (
     _calcola_detrazione_lavoro_dipendente_2026 as calcola_detrazione,
 )
@@ -74,9 +72,7 @@ class TestRapportoGiorniLavorati:
 
     def test_proration_sotto_il_minimo_scatta_il_floor_determinato(self):
         # stesso caso, ma tempo determinato -> floor 1380 invece di 690
-        assert calcola_detrazione(
-            Decimal(10000), giorni_lavorati=73, tempo_determinato=True
-        ) == Decimal("1380")
+        assert calcola_detrazione(Decimal(10000), giorni_lavorati=73, tempo_determinato=True) == Decimal("1380")
 
     def test_floor_non_si_applica_fuori_dalla_fascia_bassa(self):
         # ATTENZIONE: comportamento attuale del codice, da verificare — il

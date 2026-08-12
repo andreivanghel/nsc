@@ -4,6 +4,7 @@ eseguiti contro i dati REALI di REGIME_2026_MILANO (non i numeri
 astratti dei test unitari in tests/domain/). Usati per fissare punti
 di riferimento.
 """
+
 from dataclasses import dataclass
 from decimal import Decimal
 

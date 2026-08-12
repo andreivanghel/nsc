@@ -30,9 +30,11 @@ class TestWiringRegimeMilano2026:
 
     def test_soglia_esenzione_milano_23000(self):
         from inc_tax_sim.domain.value_objects.fiscal_regime import REGIME_2026_MILANO
+
         assert REGIME_2026_MILANO.addizionale_comunale(Decimal(23000)) == Decimal(0)
 
     def test_appena_sopra_soglia_milano(self):
         from inc_tax_sim.domain.value_objects.fiscal_regime import REGIME_2026_MILANO
+
         # 23001 * 0.008 = 184.008
         assert REGIME_2026_MILANO.addizionale_comunale(Decimal(23001)) == Decimal("184.008")

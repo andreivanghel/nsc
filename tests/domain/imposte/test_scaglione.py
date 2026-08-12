@@ -40,7 +40,10 @@ class TestValidazioneImpostaAggregato:
         # altro scaglione chiuso -> deve fallire sul controllo "deve
         # essere il piu' alto", non su gap/overlap
         with pytest.raises(ValueError, match="deve essere quello con soglia_min più alta"):
-            Imposta(nome="x", scaglioni=(
-                Scaglione(Decimal(0), None, Decimal("0.1")),
-                Scaglione(Decimal(50), Decimal(100), Decimal("0.2")),
-            ))
+            Imposta(
+                nome="x",
+                scaglioni=(
+                    Scaglione(Decimal(0), None, Decimal("0.1")),
+                    Scaglione(Decimal(50), Decimal(100), Decimal("0.2")),
+                ),
+            )
